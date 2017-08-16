@@ -21,6 +21,9 @@ public class ActivityMain extends AppCompatActivity
     private static final String LOG_TAG = ActivityMain.class.getSimpleName();
 
     private static final int REQUEST_AUDIO_PERMISSION_RESULT = 100;
+
+    private static final int NUM_FFT_BINS = 1024;       // Has to be power of 2
+
     private static final int RECORDER_SAMPLERATE = 44100;
     private static final int RECORDER_CHANNELS = AudioFormat.CHANNEL_IN_MONO;
     private static final int RECORDER_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
@@ -113,7 +116,6 @@ public class ActivityMain extends AppCompatActivity
         handlerThread.start();
         audioRecorderHandler = new Handler(handlerThread.getLooper());
 
-        Log.d(LOG_TAG, "onResume, Initialising AudioRecorder");
         bufferSize = AudioRecord.getMinBufferSize(RECORDER_SAMPLERATE, RECORDER_CHANNELS, RECORDER_ENCODING);
 
     }
@@ -163,11 +165,50 @@ public class ActivityMain extends AppCompatActivity
             while(isRecording)
             {
                 recorder.read(audioData, 0, bufferSize);
+
+                Complex[] complexSignal = convDataToComplex(audioData);
+                Complex[] fft = FFT.fft(complexSignal);
+                double[] abs = absSignal(fft);
+
+                // Log.d(LOG_TAG, String.format("signal: %f", abs[20]));
             }
             recorder.stop();
             recorder.release();
 
             Log.d(LOG_TAG, "Processing loop stopped");
+        }
+
+        public Complex[] convDataToComplex(byte[] audioData)
+        {
+            double temp;
+            Complex[] complexSignal = new Complex[NUM_FFT_BINS];
+
+            for(int i = 0; i < NUM_FFT_BINS; i++)
+            {
+                temp = (double)((audioData[2 * i] & 0xFF) | (audioData[2 * i + 1] << 8)) / 32768.0F;
+                complexSignal[i] = new Complex(temp, 0.0);      // Only interested in real part, i.e. the magnitude
+
+            }
+
+            return complexSignal;
+        }
+
+        public double[] absSignal(Complex[] complexSignal)
+        {
+            double[] absSignal = new double[NUM_FFT_BINS / 2];
+            double mMaxFFTSample = 0.0;
+            int peakPos = 0;
+
+            for(int i = 0; i < (NUM_FFT_BINS / 2); i++)
+            {
+                absSignal[i] = Math.sqrt(Math.pow(complexSignal[i].re(), 2) + Math.pow(complexSignal[i].im(), 2));
+                /*if(absSignal[i] > mMaxFFTSample)
+                {
+                    mMaxFFTSample = absSignal[i];
+                    peakPos = i;
+                }*/
+            }
+            return absSignal;
         }
 
         public void setRecording(boolean isRecording)
