@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/EchoLocate.iml" filepath="$PROJECT_DIR$/EchoLocate.iml" />
+      <module fileurl="file://$PROJECT_DIR$/UpWork_EchoLocate.iml" filepath="$PROJECT_DIR$/UpWork_EchoLocate.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
     </modules>
   </component>
