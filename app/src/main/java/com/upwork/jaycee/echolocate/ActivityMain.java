@@ -32,6 +32,8 @@ public class ActivityMain extends AppCompatActivity
     private Handler audioRecorderHandler;
     private HandlerThread handlerThread;
 
+    ViewVisualiser viewVisualiser;
+
     private int bufferSize;
 
     private boolean isRecording = false;
@@ -71,6 +73,9 @@ public class ActivityMain extends AppCompatActivity
         setContentView(R.layout.activity_main);
 
         checkAndRequestPermission();
+
+        viewVisualiser = (ViewVisualiser)findViewById(R.id.view_visualiser);
+        viewVisualiser.setNumFftBins(NUM_FFT_BINS);
 
         findViewById(R.id.button_record).setOnClickListener(new View.OnClickListener()
         {
@@ -168,7 +173,17 @@ public class ActivityMain extends AppCompatActivity
 
                 Complex[] complexSignal = convDataToComplex(audioData);
                 Complex[] fft = FFT.fft(complexSignal);
-                double[] abs = absSignal(fft);
+                final double[] abs = absSignal(fft);
+
+                runOnUiThread(new Runnable()
+                {
+                    @Override
+                    public void run()
+                    {
+                        viewVisualiser.setBinHeights(abs);
+                        viewVisualiser.invalidate();
+                    }
+                });
 
                 // Log.d(LOG_TAG, String.format("signal: %f", abs[20]));
             }

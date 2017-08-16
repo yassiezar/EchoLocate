@@ -12,4 +12,9 @@
         android:id="@+id/button_record"
         android:text="Record"/>
 
+    <com.upwork.jaycee.echolocate.ViewVisualiser
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/view_visualiser"/>
+
 </LinearLayout>
