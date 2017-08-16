@@ -6,50 +6,58 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.util.AttributeSet;
+import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.Display;
 import android.view.View;
-
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 
 public class ViewVisualiser extends View
 {
     private int numFftBins = 0;
     private int width, height;
     private double[] binHeights;
+    private double peak, normFactor;
+
+    private Context context;
+    private Paint paint = new Paint();
 
     public ViewVisualiser(Context context)
     {
         super(context);
+        this.context = context;
     }
 
     public ViewVisualiser(Context context, AttributeSet attrs)
     {
         super(context, attrs);
+        this.context = context;
     }
 
     public ViewVisualiser(Context context, AttributeSet attrs, int defStyle)
     {
         super(context, attrs, defStyle);
+        this.context = context;
     }
 
     @Override
     protected void onDraw(Canvas canvas)
     {
         super.onDraw(canvas);
-        // canvas.drawColor(Color.RED);
+
+        int sizeFactor = width / numFftBins;
+
         if(binHeights != null)
         {
-            Paint paint = new Paint();
-            paint.setColor(Color.RED);
-            paint.setStrokeWidth(2.f);
+            float binWidth = width / numFftBins * sizeFactor;
 
-            float binWidth = width / numFftBins;
-            Log.d("Visualiser", String.format("binWidth: %f height: %d maxBinHeight: %f", binWidth, height, binHeights[20]));
-            for(int i = 0; i < binHeights.length; i ++)
+            paint.setColor(Color.RED);
+            paint.setStrokeWidth(binWidth);
+
+            Log.d("Visualiser", String.format("width: %d binWidth: %f height: %d maxBinHeight: %f", width, binWidth, height, peak));
+            for(int i = 0; i < numFftBins; i ++)
             {
-                canvas.drawRect(new Rect((int)(i * binWidth), (int)(binHeights[i]), (int)(i * binWidth + binWidth), 0), paint);
+                // canvas.drawRect(new Rect((int)(i * binWidth), (int)(binHeights[i] * display.heightPixels / peak), (int)((i + 1) * binWidth), 0), paint);
+                canvas.drawLine(sizeFactor*i, 0, sizeFactor*(i + 1), (int)(binHeights[i] * height), paint);
             }
         }
     }
@@ -70,5 +78,10 @@ public class ViewVisualiser extends View
     public void setBinHeights(double[] binHeights)
     {
         this.binHeights = binHeights;
+    }
+
+    public void setPeak(double peak)
+    {
+        this.peak = peak;
     }
 }

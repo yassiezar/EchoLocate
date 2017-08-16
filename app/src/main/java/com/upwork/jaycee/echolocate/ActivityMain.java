@@ -75,7 +75,7 @@ public class ActivityMain extends AppCompatActivity
         checkAndRequestPermission();
 
         viewVisualiser = (ViewVisualiser)findViewById(R.id.view_visualiser);
-        viewVisualiser.setNumFftBins(NUM_FFT_BINS);
+        viewVisualiser.setNumFftBins(NUM_FFT_BINS / 2);
 
         findViewById(R.id.button_record).setOnClickListener(new View.OnClickListener()
         {
@@ -163,7 +163,7 @@ public class ActivityMain extends AppCompatActivity
         {
             byte[] audioData = new byte[bufferSize];
 
-            AudioRecord recorder = new AudioRecord(MediaRecorder.AudioSource.MIC, RECORDER_SAMPLERATE, RECORDER_CHANNELS, RECORDER_ENCODING, bufferSize);
+            AudioRecord recorder = new AudioRecord(MediaRecorder.AudioSource.DEFAULT, RECORDER_SAMPLERATE, RECORDER_CHANNELS, RECORDER_ENCODING, bufferSize);
             recorder.startRecording();
 
             Log.d(LOG_TAG, "Processing loop started");
@@ -173,19 +173,17 @@ public class ActivityMain extends AppCompatActivity
 
                 Complex[] complexSignal = convDataToComplex(audioData);
                 Complex[] fft = FFT.fft(complexSignal);
-                final double[] abs = absSignal(fft);
+                double[] abs = absSignal(fft);
+                viewVisualiser.setBinHeights(abs);
 
                 runOnUiThread(new Runnable()
                 {
                     @Override
                     public void run()
                     {
-                        viewVisualiser.setBinHeights(abs);
                         viewVisualiser.invalidate();
                     }
                 });
-
-                // Log.d(LOG_TAG, String.format("signal: %f", abs[20]));
             }
             recorder.stop();
             recorder.release();
@@ -202,7 +200,6 @@ public class ActivityMain extends AppCompatActivity
             {
                 temp = (double)((audioData[2 * i] & 0xFF) | (audioData[2 * i + 1] << 8)) / 32768.0F;
                 complexSignal[i] = new Complex(temp, 0.0);      // Only interested in real part, i.e. the magnitude
-
             }
 
             return complexSignal;
@@ -211,18 +208,17 @@ public class ActivityMain extends AppCompatActivity
         public double[] absSignal(Complex[] complexSignal)
         {
             double[] absSignal = new double[NUM_FFT_BINS / 2];
-            double mMaxFFTSample = 0.0;
-            int peakPos = 0;
+            double maxFFTSample = 0.0;
 
             for(int i = 0; i < (NUM_FFT_BINS / 2); i++)
             {
                 absSignal[i] = Math.sqrt(Math.pow(complexSignal[i].re(), 2) + Math.pow(complexSignal[i].im(), 2));
-                /*if(absSignal[i] > mMaxFFTSample)
+                if(absSignal[i] > maxFFTSample)
                 {
-                    mMaxFFTSample = absSignal[i];
-                    peakPos = i;
-                }*/
+                    maxFFTSample = absSignal[i];
+                }
             }
+            viewVisualiser.setPeak(maxFFTSample);
             return absSignal;
         }
 

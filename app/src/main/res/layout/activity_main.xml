@@ -7,7 +7,7 @@
     tools:context="com.upwork.jaycee.echolocate.ActivityMain">
 
     <Button
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:id="@+id/button_record"
         android:text="Record"/>
@@ -15,6 +15,7 @@
     <com.upwork.jaycee.echolocate.ViewVisualiser
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_weight="1"
         android:id="@+id/view_visualiser"/>
 
 </LinearLayout>
