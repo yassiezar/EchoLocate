@@ -6,6 +6,8 @@ import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
 import android.os.Build;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.support.annotation.NonNull;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -23,7 +25,9 @@ public class ActivityMain extends AppCompatActivity
     private static final int RECORDER_CHANNELS = AudioFormat.CHANNEL_IN_MONO;
     private static final int RECORDER_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
 
-    private AudioRecord recorder;
+    private AudioRecordRunnable audioRecorderRunnable;
+    private Handler audioRecorderHandler;
+    private HandlerThread handlerThread;
 
     private int bufferSize;
 
@@ -33,17 +37,16 @@ public class ActivityMain extends AppCompatActivity
     {
         Log.d(LOG_TAG, "Starting recording");
 
-        recorder.startRecording();
-
-        short[] audioBuffer = new short[bufferSize];
-        recorder.read(audioBuffer, 0, bufferSize);
+        audioRecorderRunnable = new AudioRecordRunnable();
+        audioRecorderRunnable.setRecording(true);
+        audioRecorderHandler.post(audioRecorderRunnable);
     }
 
     public void stopRecording()
     {
         Log.d(LOG_TAG, "Stopping recording");
 
-        recorder.stop();
+        audioRecorderRunnable.setRecording(false);
     }
 
     public void toggleRecorder(boolean isRecording)
@@ -106,11 +109,13 @@ public class ActivityMain extends AppCompatActivity
     {
         super.onResume();
 
-        isRecording = false;
+        handlerThread = new HandlerThread("");
+        handlerThread.start();
+        audioRecorderHandler = new Handler(handlerThread.getLooper());
 
         Log.d(LOG_TAG, "onResume, Initialising AudioRecorder");
         bufferSize = AudioRecord.getMinBufferSize(RECORDER_SAMPLERATE, RECORDER_CHANNELS, RECORDER_ENCODING);
-        recorder = new AudioRecord(MediaRecorder.AudioSource.MIC, RECORDER_SAMPLERATE, RECORDER_CHANNELS, RECORDER_ENCODING, bufferSize);
+
     }
 
     @Override
@@ -118,7 +123,13 @@ public class ActivityMain extends AppCompatActivity
     {
         super.onPause();
 
-        recorder.stop();
+        if(audioRecorderRunnable != null)
+        {
+            audioRecorderRunnable.setRecording(false);
+            audioRecorderHandler.removeCallbacks(audioRecorderRunnable);
+            handlerThread.quit();
+        }
+
         isRecording = false;
     }
 
@@ -133,6 +144,35 @@ public class ActivityMain extends AppCompatActivity
             {
                 Toast.makeText(getApplicationContext(), "Application will not have audio on record", Toast.LENGTH_SHORT).show();
             }
+        }
+    }
+
+    private class AudioRecordRunnable implements Runnable
+    {
+        private boolean isRecording = false;
+
+        @Override
+        public void run()
+        {
+            byte[] audioData = new byte[bufferSize];
+
+            AudioRecord recorder = new AudioRecord(MediaRecorder.AudioSource.MIC, RECORDER_SAMPLERATE, RECORDER_CHANNELS, RECORDER_ENCODING, bufferSize);
+            recorder.startRecording();
+
+            Log.d(LOG_TAG, "Processing loop started");
+            while(isRecording)
+            {
+                recorder.read(audioData, 0, bufferSize);
+            }
+            recorder.stop();
+            recorder.release();
+
+            Log.d(LOG_TAG, "Processing loop stopped");
+        }
+
+        public void setRecording(boolean isRecording)
+        {
+            this.isRecording = isRecording;
         }
     }
 }
