@@ -53,7 +53,7 @@ public class ViewVisualiser extends View
             paint.setColor(Color.RED);
             paint.setStrokeWidth(binWidth);
 
-            Log.d("Visualiser", String.format("width: %d binWidth: %f height: %d maxBinHeight: %f", width, binWidth, height, peak));
+            // Log.d("Visualiser", String.format("width: %d binWidth: %f height: %d maxBinHeight: %f", width, binWidth, height, peak));
             for(int i = 0; i < numFftBins; i ++)
             {
                 // canvas.drawRect(new Rect((int)(i * binWidth), (int)(binHeights[i] * display.heightPixels / peak), (int)((i + 1) * binWidth), 0), paint);

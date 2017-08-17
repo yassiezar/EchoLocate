@@ -28,6 +28,10 @@ public class ActivityMain extends AppCompatActivity
     private static final int RECORDER_CHANNELS = AudioFormat.CHANNEL_IN_MONO;
     private static final int RECORDER_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
 
+    private static final int SIGNAL_TRIGGER_UPPER = 20000;
+    private static final int SIGNAL_TRIGGER_MIDDLE = 17000;
+    private static final int SIGNAL_TRIGGER_LOWER = 15000;
+
     private AudioRecordRunnable audioRecorderRunnable;
     private Handler audioRecorderHandler;
     private HandlerThread handlerThread;
@@ -37,6 +41,7 @@ public class ActivityMain extends AppCompatActivity
     private int bufferSize;
 
     private boolean isRecording = false;
+    private boolean isSaving = false;
 
     public void startRecording()
     {
@@ -64,6 +69,11 @@ public class ActivityMain extends AppCompatActivity
         {
             stopRecording();
         }
+    }
+
+    public void startRecordingToFile()
+    {
+
     }
 
     @Override
@@ -175,6 +185,34 @@ public class ActivityMain extends AppCompatActivity
                 Complex[] fft = FFT.fft(complexSignal);
                 double[] abs = absSignal(fft);
                 viewVisualiser.setBinHeights(abs);
+
+                double highFreqLevel = 0;
+                for(int i = SIGNAL_TRIGGER_MIDDLE / 20 / 2; i < SIGNAL_TRIGGER_UPPER / 20 / 2; i ++)
+                {
+                    highFreqLevel += abs[i];
+                }
+                double lowFreqLevel = 0;
+                for(int i = SIGNAL_TRIGGER_LOWER / 20 / 2; i < SIGNAL_TRIGGER_MIDDLE / 20 / 2; i ++)
+                {
+                    lowFreqLevel += abs[i];
+                }
+                // Log.d(LOG_TAG, String.format("low level: %f", lowFreqLevel));
+                // Log.d(LOG_TAG, String.format("hi level: %f", highFreqLevel));
+
+                if(highFreqLevel > 3 * lowFreqLevel && !isSaving)
+                {
+                    isSaving = true;
+                    startRecordingToFile();
+                    runOnUiThread(new Runnable()
+                    {
+                        @Override
+                        public void run()
+                        {
+                            // Log.d(LOG_TAG, "Threshold");
+                            Toast.makeText(ActivityMain.this, "Hi freq detected", Toast.LENGTH_LONG).show();
+                        }
+                    });
+                }
 
                 runOnUiThread(new Runnable()
                 {
