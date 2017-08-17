@@ -33,7 +33,7 @@ public class ActivityMain extends AppCompatActivity
 {
     private static final String LOG_TAG = ActivityMain.class.getSimpleName();
 
-    private static final String AUDIO_FILENAME = Environment.getExternalStorageDirectory().getPath() + "/audio";
+    private static final String AUDIO_FILENAME = Environment.getExternalStorageDirectory().getPath() + "/EchoLocate/audio";
 
     private static final int REQUEST_PERMISSION_RESULT = 100;
 
@@ -51,7 +51,7 @@ public class ActivityMain extends AppCompatActivity
     private Handler audioRecorderHandler;
     private HandlerThread handlerThread;
 
-    ViewVisualiser viewVisualiser;
+    private ViewVisualiser viewVisualiser;
 
     private int bufferSize;
 
@@ -180,6 +180,8 @@ public class ActivityMain extends AppCompatActivity
     {
         private boolean isRecording = false;
 
+        private long time = 0;
+
         @Override
         public void run()
         {
@@ -190,13 +192,13 @@ public class ActivityMain extends AppCompatActivity
             recorder.startRecording();
 
             // Initialise the audio file writer
-            //File path = getExternalFilesDir(null);
-            //File audioFile = new File(path, AUDIO_FILENAME);
             BufferedOutputStream os = null;
 
             try
             {
-                os = new BufferedOutputStream(new FileOutputStream(AUDIO_FILENAME + ".raw"));
+                File dir = new File(AUDIO_FILENAME);
+                dir.mkdirs();
+                os = new BufferedOutputStream(new FileOutputStream(new File(dir, "audio.raw")));
             }
             catch(FileNotFoundException e)
             {
@@ -229,6 +231,8 @@ public class ActivityMain extends AppCompatActivity
                 if(highFreqLevel > 3 * lowFreqLevel && !isSaving)
                 {
                     isSaving = true;
+                    time = System.currentTimeMillis();
+
                     runOnUiThread(new Runnable()
                     {
                         @Override
@@ -240,7 +244,10 @@ public class ActivityMain extends AppCompatActivity
                     });
                 }
 
-                if(isSaving && os != null && read != AudioRecord.ERROR_INVALID_OPERATION)
+                if(isSaving &&
+                        os != null &&
+                        read != AudioRecord.ERROR_INVALID_OPERATION &&
+                        System.currentTimeMillis() - time < 60000) // Record for 1 minute
                 {
                     try
                     {
@@ -252,6 +259,11 @@ public class ActivityMain extends AppCompatActivity
                         Log.e(LOG_TAG, "File write error: " + e);
                     }
                 }
+                else if(System.currentTimeMillis() - time >= 60000)
+                {
+                    isSaving = false;
+                    time = 0;
+                }
 
                 runOnUiThread(new Runnable()
                 {
@@ -262,9 +274,12 @@ public class ActivityMain extends AppCompatActivity
                     }
                 });
             }
+
             // Close recorder
             recorder.stop();
             recorder.release();
+            isSaving = false;
+            time = 0;
 
             // Close audio writer
             if(os != null)
@@ -282,7 +297,7 @@ public class ActivityMain extends AppCompatActivity
             // Convert RAW to .wav file
             try
             {
-                rawToWave(new File(AUDIO_FILENAME + ".raw"), new File(AUDIO_FILENAME + ".wav"));
+                rawToWave(new File(AUDIO_FILENAME + "/audio.raw"), new File(AUDIO_FILENAME + "/audio.wav"));
             }
             catch(IOException e)
             {
@@ -330,7 +345,6 @@ public class ActivityMain extends AppCompatActivity
 
         private void rawToWave(final File rawFile, final File waveFile) throws IOException
         {
-
             byte[] rawData = new byte[(int) rawFile.length()];
             DataInputStream input = null;
             try
