@@ -1,5 +1,7 @@
 package com.upwork.jaycee.echolocate;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
@@ -35,6 +37,7 @@ public class AudioRecordRunnable implements Runnable
     private static final int NUM_FFT_BINS = 1024;       // Has to be power of 2
 
     private ActivityMain activityMain;
+    private SharedPreferences prefs;
 
     private boolean isRecording = false;
     private boolean isSaving = false;
@@ -44,6 +47,7 @@ public class AudioRecordRunnable implements Runnable
     public AudioRecordRunnable(ActivityMain activityMain)
     {
         this.activityMain = activityMain;
+        prefs = activityMain.getSharedPreferences("com.upwork.jaycee.echolocate", Context.MODE_PRIVATE);
     }
 
     @Override
@@ -81,17 +85,17 @@ public class AudioRecordRunnable implements Runnable
             activityMain.getViewVisualiser().setBinHeights(abs);
 
             double highFreqLevel = 0;
-            for(int i = SIGNAL_TRIGGER_MIDDLE / 20 / 2; i < SIGNAL_TRIGGER_UPPER / 20 / 2; i ++)
+            for(int i = prefs.getInt("FREQUENCY_MED", SIGNAL_TRIGGER_MIDDLE) / 20 / 2; i < prefs.getInt("FREQUENCY_HI", SIGNAL_TRIGGER_UPPER) / 20 / 2; i ++)
             {
                 highFreqLevel += abs[i];
             }
             double lowFreqLevel = 0;
-            for(int i = SIGNAL_TRIGGER_LOWER / 20 / 2; i < SIGNAL_TRIGGER_MIDDLE / 20 / 2; i ++)
+            for(int i = prefs.getInt("FREQUENCY_LOW", SIGNAL_TRIGGER_LOWER) / 20 / 2; i < prefs.getInt("FREQUENCY_LOW", SIGNAL_TRIGGER_MIDDLE) / 20 / 2; i ++)
             {
                 lowFreqLevel += abs[i];
             }
 
-            if(highFreqLevel > 3 * lowFreqLevel && !isSaving)
+            if(highFreqLevel > prefs.getInt("THRESHOLD_MULTIPLIER", 2) * lowFreqLevel && !isSaving)
             {
                 isSaving = true;
                 time = System.currentTimeMillis();

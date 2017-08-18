@@ -2,6 +2,7 @@ package com.upwork.jaycee.echolocate;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
@@ -15,6 +16,9 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.widget.EditText;
+import android.widget.SeekBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 public class ActivityMain extends AppCompatActivity
@@ -31,8 +35,12 @@ public class ActivityMain extends AppCompatActivity
     private LocationManager locationManager;
     private LocationListener locationListener;
     private Location currentLocation;
+    private SharedPreferences prefs;
 
     private ViewVisualiser viewVisualiser;
+    private EditText editLowFreq,editMedFreq, editHiFreq;
+    private TextView textviewThresholdMultiplier;
+    private SeekBar seekbarThresholdMultiplier;
 
     private boolean isRecording = false;
 
@@ -72,8 +80,51 @@ public class ActivityMain extends AppCompatActivity
 
         checkAndRequestPermission();
 
+        prefs = this.getSharedPreferences("com.upwork.jaycee.echolocate", Context.MODE_PRIVATE);
+        editLowFreq = (EditText)findViewById(R.id.edit_freq_lo);
+        editLowFreq.setText(String.valueOf(prefs.getInt("FREQUENCY_LOW", 15000)));
+        editMedFreq = (EditText)findViewById(R.id.edit_freq_med);
+        editMedFreq.setText(String.valueOf(prefs.getInt("FREQUENCY_MED", 17000)));
+        editHiFreq = (EditText)findViewById(R.id.edit_freq_hi);
+        editHiFreq.setText(String.valueOf(prefs.getInt("FREQUENCY_HI", 20000)));
+
+        textviewThresholdMultiplier = (TextView)findViewById(R.id.textview_threshold_multiplier);
+
+        seekbarThresholdMultiplier = (SeekBar)findViewById(R.id.seekbar_threshold);
+        seekbarThresholdMultiplier.setProgress(prefs.getInt("THRESHOLD_MULTIPLIER", 2));
+        seekbarThresholdMultiplier.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener()
+        {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean b)
+            {
+                textviewThresholdMultiplier.setText("Threshold multiplier: " + String.valueOf(progress));
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) { }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) { }
+        });
+
+        textviewThresholdMultiplier.setText("Threshold multiplier: " + String.valueOf(seekbarThresholdMultiplier.getProgress()));
+
         viewVisualiser = (ViewVisualiser)findViewById(R.id.view_visualiser);
         viewVisualiser.setNumFftBins(NUM_FFT_BINS / 2);
+
+        findViewById(R.id.button_save).setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View view)
+            {
+                prefs.edit().putInt("FREQUENCY_LOW", Integer.parseInt(editLowFreq.getText().toString())).apply();
+                prefs.edit().putInt("FREQUENCY_MED", Integer.parseInt(editMedFreq.getText().toString())).apply();
+                prefs.edit().putInt("FREQUENCY_HI", Integer.parseInt(editHiFreq.getText().toString())).apply();
+                prefs.edit().putInt("THRESHOLD_MULTIPLIER", seekbarThresholdMultiplier.getProgress()).apply();
+
+                Toast.makeText(ActivityMain.this, "Saved", Toast.LENGTH_LONG).show();
+            }
+        });
 
         findViewById(R.id.button_record).setOnClickListener(new View.OnClickListener()
         {

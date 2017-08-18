@@ -64,11 +64,13 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Threshold Multiplier"/>
+        android:text="Threshold Multiplier"
+        android:id="@+id/textview_threshold_multiplier"/>
     <SeekBar
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:id="@+id/seekbar_threshold" />
+        android:id="@+id/seekbar_threshold"
+        android:max="5"/>
     <Button
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
