@@ -160,7 +160,7 @@ public class AudioRecordRunnable implements Runnable
         // Convert RAW to .wav file
         try
         {
-            String filename = activityMain.getCurrentLocation().toString();
+            String filename = String.valueOf(activityMain.getCurrentLocation().getLatitude()) + "," + String.valueOf(activityMain.getCurrentLocation().getLongitude());
             Log.d(LOG_TAG, filename);
             rawToWave(new File(AUDIO_FILENAME + "/" + filename + ".raw"), new File(AUDIO_FILENAME + "/" + filename + ".wav"));
         }
