@@ -19,6 +19,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class AudioRecordRunnable implements Runnable
 {
@@ -62,12 +64,17 @@ public class AudioRecordRunnable implements Runnable
 
         // Initialise the audio file writer
         BufferedOutputStream os = null;
+        long yourmilliseconds = System.currentTimeMillis();
+        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
+
+        Date resultdate = new Date(yourmilliseconds);
+        String filename = sdf.format(resultdate) + "_" + String.valueOf(activityMain.getCurrentLocation().getLatitude()) + "," + String.valueOf(activityMain.getCurrentLocation().getLongitude());
 
         try
         {
             File dir = new File(AUDIO_FILENAME);
             dir.mkdirs();
-            os = new BufferedOutputStream(new FileOutputStream(new File(dir, "audio.raw")));
+            os = new BufferedOutputStream(new FileOutputStream(new File(dir, filename + ".raw")));
         }
         catch(FileNotFoundException e)
         {
@@ -95,7 +102,8 @@ public class AudioRecordRunnable implements Runnable
                 lowFreqLevel += abs[i];
             }
 
-            if(highFreqLevel > prefs.getInt("THRESHOLD_MULTIPLIER", 2) * lowFreqLevel && !isSaving)
+            // if(highFreqLevel > prefs.getInt("THRESHOLD_MULTIPLIER", 2) * lowFreqLevel && !isSaving)
+            if(highFreqLevel > 2 * lowFreqLevel && !isSaving)
             {
                 isSaving = true;
                 time = System.currentTimeMillis();
@@ -164,9 +172,9 @@ public class AudioRecordRunnable implements Runnable
         // Convert RAW to .wav file
         try
         {
-            String filename = String.valueOf(activityMain.getCurrentLocation().getLatitude()) + "," + String.valueOf(activityMain.getCurrentLocation().getLongitude());
             Log.d(LOG_TAG, filename);
             rawToWave(new File(AUDIO_FILENAME + "/" + filename + ".raw"), new File(AUDIO_FILENAME + "/" + filename + ".wav"));
+            // rawToWave(new File(AUDIO_FILENAME + "/file.raw"), new File(AUDIO_FILENAME + "/file.wav"));
         }
         catch(IOException e)
         {
