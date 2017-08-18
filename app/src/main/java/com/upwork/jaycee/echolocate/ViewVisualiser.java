@@ -53,7 +53,7 @@ public class ViewVisualiser extends View
             for(int i = 0; i < numFftBins; i ++)
             {
                 // canvas.drawRect(new Rect((int)(i * binWidth), (int)(binHeights[i] * display.heightPixels / peak), (int)((i + 1) * binWidth), 0), paint);
-                canvas.drawLine(sizeFactor*i, 0, sizeFactor*(i + 1), (int)(binHeights[i] * height), paint);
+                canvas.drawLine(sizeFactor*i, height, sizeFactor*(i + 1), (int)(height - binHeights[i] * height), paint);
             }
         }
     }

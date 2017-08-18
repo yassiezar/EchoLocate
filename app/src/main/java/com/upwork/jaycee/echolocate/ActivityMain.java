@@ -117,12 +117,20 @@ public class ActivityMain extends AppCompatActivity
             @Override
             public void onClick(View view)
             {
-                prefs.edit().putInt("FREQUENCY_LOW", Integer.parseInt(editLowFreq.getText().toString())).apply();
-                prefs.edit().putInt("FREQUENCY_MED", Integer.parseInt(editMedFreq.getText().toString())).apply();
-                prefs.edit().putInt("FREQUENCY_HI", Integer.parseInt(editHiFreq.getText().toString())).apply();
-                prefs.edit().putInt("THRESHOLD_MULTIPLIER", seekbarThresholdMultiplier.getProgress()).apply();
+                if(!isRecording)
+                {
+                    prefs.edit().putInt("FREQUENCY_LOW", Integer.parseInt(editLowFreq.getText().toString())).apply();
+                    prefs.edit().putInt("FREQUENCY_MED", Integer.parseInt(editMedFreq.getText().toString())).apply();
+                    prefs.edit().putInt("FREQUENCY_HI", Integer.parseInt(editHiFreq.getText().toString())).apply();
+                    prefs.edit().putInt("THRESHOLD_MULTIPLIER", seekbarThresholdMultiplier.getProgress()).apply();
 
-                Toast.makeText(ActivityMain.this, "Saved", Toast.LENGTH_LONG).show();
+                    Toast.makeText(ActivityMain.this, "Saved", Toast.LENGTH_LONG).show();
+                }
+                else
+                {
+                    Toast.makeText(ActivityMain.this, "Please stop recording before save", Toast.LENGTH_LONG).show();
+
+                }
             }
         });
 
