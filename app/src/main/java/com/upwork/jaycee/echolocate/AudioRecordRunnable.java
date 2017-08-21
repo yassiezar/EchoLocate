@@ -44,8 +44,6 @@ public class AudioRecordRunnable implements Runnable
     private boolean isRecording = false;
     private boolean isSaving = false;
 
-    private long time = 0;
-
     public AudioRecordRunnable(ActivityMain activityMain)
     {
         this.activityMain = activityMain;
@@ -64,11 +62,13 @@ public class AudioRecordRunnable implements Runnable
 
         // Initialise the audio file writer
         BufferedOutputStream os = null;
-        long yourmilliseconds = System.currentTimeMillis();
-        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
+        long time = System.currentTimeMillis();
+        // SimpleDateFormat sdf = new SimpleDateFormat("HH.mm.ss");
+        SimpleDateFormat sdf = new SimpleDateFormat("MMM.d''yy_HH.mm.ss");
 
-        Date resultdate = new Date(yourmilliseconds);
-        String filename = sdf.format(resultdate) + "_" + String.valueOf(activityMain.getCurrentLocation().getLatitude()) + "," + String.valueOf(activityMain.getCurrentLocation().getLongitude());
+        Date timestamp = new Date(time);
+        // String filename = String.valueOf(activityMain.getCurrentLocation().getLatitude()) + "," + String.valueOf(activityMain.getCurrentLocation().getLongitude());
+        String filename = sdf.format(timestamp) + "_" + String.valueOf(activityMain.getCurrentLocation().getLatitude()) + "," + String.valueOf(activityMain.getCurrentLocation().getLongitude());
 
         try
         {
@@ -82,6 +82,9 @@ public class AudioRecordRunnable implements Runnable
         }
 
         Log.d(LOG_TAG, "Processing loop started");
+
+        // Factor to divide Hz by to determine which bins the limits are in
+        double factor = (double)prefs.getInt("FREQUENCY_HI", SIGNAL_TRIGGER_UPPER) / NUM_FFT_BINS;
         while(isRecording)
         {
             int read = recorder.read(audioData, 0, bufferSize);
@@ -92,18 +95,19 @@ public class AudioRecordRunnable implements Runnable
             activityMain.getViewVisualiser().setBinHeights(abs);
 
             double highFreqLevel = 0;
-            for(int i = prefs.getInt("FREQUENCY_MED", SIGNAL_TRIGGER_MIDDLE) / 20 / 2; i < prefs.getInt("FREQUENCY_HI", SIGNAL_TRIGGER_UPPER) / 20 / 2; i ++)
+            // Log.d(LOG_TAG, String.valueOf(prefs.getInt("FREQUENCY_HI", SIGNAL_TRIGGER_UPPER) / factor / 2 - 1) + String.valueOf(factor));
+            for(int i = (int)(prefs.getInt("FREQUENCY_MED", SIGNAL_TRIGGER_MIDDLE) / factor / 2); i < prefs.getInt("FREQUENCY_HI", SIGNAL_TRIGGER_UPPER) / factor / 2; i ++)
             {
                 highFreqLevel += abs[i];
             }
             double lowFreqLevel = 0;
-            for(int i = prefs.getInt("FREQUENCY_LOW", SIGNAL_TRIGGER_LOWER) / 20 / 2; i < prefs.getInt("FREQUENCY_LOW", SIGNAL_TRIGGER_MIDDLE) / 20 / 2; i ++)
+            for(int i = (int)(prefs.getInt("FREQUENCY_LOW", SIGNAL_TRIGGER_LOWER) / factor / 2); i < prefs.getInt("FREQUENCY_MED", SIGNAL_TRIGGER_MIDDLE) / factor / 2; i ++)
             {
                 lowFreqLevel += abs[i];
             }
 
-            // if(highFreqLevel > prefs.getInt("THRESHOLD_MULTIPLIER", 2) * lowFreqLevel && !isSaving)
-            if(highFreqLevel > 2 * lowFreqLevel && !isSaving)
+            if(highFreqLevel > prefs.getInt("THRESHOLD_MULTIPLIER", 2) * lowFreqLevel && !isSaving)
+            // if(highFreqLevel > 2 * lowFreqLevel && !isSaving)
             {
                 isSaving = true;
                 time = System.currentTimeMillis();
@@ -153,7 +157,6 @@ public class AudioRecordRunnable implements Runnable
         recorder.release();
 
         isSaving = false;
-        time = 0;
 
         // Close audio writer
         if(os != null)
