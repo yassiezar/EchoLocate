@@ -41,6 +41,7 @@ public class ViewVisualiser extends View
         super.onDraw(canvas);
 
         int sizeFactor = width / numFftBins;
+        int offset = (width - (sizeFactor * numFftBins)) / 2;
 
         if(binHeights != null)
         {
@@ -53,7 +54,7 @@ public class ViewVisualiser extends View
             for(int i = 0; i < numFftBins; i ++)
             {
                 // canvas.drawRect(new Rect((int)(i * binWidth), (int)(binHeights[i] * display.heightPixels / peak), (int)((i + 1) * binWidth), 0), paint);
-                canvas.drawLine(sizeFactor*i, height, sizeFactor*(i + 1), (int)(height - binHeights[i] * height), paint);
+                canvas.drawLine(sizeFactor*i + offset, height, sizeFactor*(i + 1) + offset, (int)(height - binHeights[i] * height), paint);
             }
         }
     }
