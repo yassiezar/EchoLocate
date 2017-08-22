@@ -9,7 +9,7 @@ import android.view.View;
 
 public class ViewVisualiser extends View
 {
-    private int numFftBins = 0;
+    private int numFftBins = 512;       // Give default, non-zero intialiser to avoid zero div
     private int width, height;
     private double[] binHeights;
     private double peak, normFactor;
@@ -41,7 +41,7 @@ public class ViewVisualiser extends View
         super.onDraw(canvas);
 
         int sizeFactor = width / numFftBins;
-        int offset = (width - (sizeFactor * numFftBins)) / 2;
+        int offset = (width - (sizeFactor * numFftBins)) / 2;       // Divide up left-over screen space
 
         if(binHeights != null)
         {
@@ -53,7 +53,6 @@ public class ViewVisualiser extends View
             // Log.d("Visualiser", String.format("width: %d binWidth: %f height: %d maxBinHeight: %f", width, binWidth, height, peak));
             for(int i = 0; i < numFftBins; i ++)
             {
-                // canvas.drawRect(new Rect((int)(i * binWidth), (int)(binHeights[i] * display.heightPixels / peak), (int)((i + 1) * binWidth), 0), paint);
                 canvas.drawLine(sizeFactor*i + offset, height, sizeFactor*(i + 1) + offset, (int)(height - binHeights[i] * height), paint);
             }
         }

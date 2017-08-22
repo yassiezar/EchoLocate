@@ -31,7 +31,7 @@ public class ActivityMain extends AppCompatActivity
 
     private static final int REQUEST_PERMISSION_RESULT = 100;
 
-    private static final int NUM_FFT_BINS = 1024;       // Has to be power of 2
+    // private static final int NUM_FFT_BINS = 1024/2;       // Has to be power of 2
 
     private AudioRecordRunnable audioRecorderRunnable;
     private Handler audioRecorderHandler;
@@ -48,32 +48,23 @@ public class ActivityMain extends AppCompatActivity
 
     private boolean isRecording = false;
 
-    public void startRecording()
-    {
-        Log.d(LOG_TAG, "Starting recording");
-
-        audioRecorderRunnable = new AudioRecordRunnable(this);
-        audioRecorderRunnable.setRecording(true);
-        audioRecorderHandler.post(audioRecorderRunnable);
-    }
-
-    public void stopRecording()
-    {
-        Log.d(LOG_TAG, "Stopping recording");
-
-        audioRecorderRunnable.setRecording(false);
-    }
+    private String locationProvider;
 
     public void toggleRecorder(boolean isRecording)
     {
         if(isRecording)
         {
-            startRecording();
+            Log.d(LOG_TAG, "Starting recording");
+
+            audioRecorderRunnable = new AudioRecordRunnable(ActivityMain.this);
+            audioRecorderRunnable.setRecording(true);
+            audioRecorderHandler.post(audioRecorderRunnable);
         }
         else
         {
-            stopRecording();
-        }
+            Log.d(LOG_TAG, "Stopping recording");
+
+            audioRecorderRunnable.setRecording(false);        }
     }
 
     @Override
@@ -114,7 +105,7 @@ public class ActivityMain extends AppCompatActivity
         textviewThresholdMultiplier.setText("Threshold multiplier: " + String.valueOf(seekbarThresholdMultiplier.getProgress()));
 
         viewVisualiser = (ViewVisualiser)findViewById(R.id.view_visualiser);
-        viewVisualiser.setNumFftBins(NUM_FFT_BINS / 2);
+        // viewVisualiser.setNumFftBins(NUM_FFT_BINS / 2);
 
         findViewById(R.id.button_save).setOnClickListener(new View.OnClickListener()
         {
@@ -123,12 +114,20 @@ public class ActivityMain extends AppCompatActivity
             {
                 if(!isRecording)
                 {
-                    prefs.edit().putInt("FREQUENCY_LOW", Integer.parseInt(editLowFreq.getText().toString())).apply();
-                    prefs.edit().putInt("FREQUENCY_MED", Integer.parseInt(editMedFreq.getText().toString())).apply();
-                    prefs.edit().putInt("FREQUENCY_HI", Integer.parseInt(editHiFreq.getText().toString())).apply();
-                    prefs.edit().putInt("THRESHOLD_MULTIPLIER", seekbarThresholdMultiplier.getProgress()).apply();
+                    if(Integer.parseInt(editLowFreq.getText().toString()) < Integer.parseInt(editMedFreq.getText().toString()) &&
+                                Integer.parseInt(editMedFreq.getText().toString()) < Integer.parseInt(editHiFreq.getText().toString()))
+                    {
+                        prefs.edit().putInt("FREQUENCY_LOW", Integer.parseInt(editLowFreq.getText().toString())).apply();
+                        prefs.edit().putInt("FREQUENCY_MED", Integer.parseInt(editMedFreq.getText().toString())).apply();
+                        prefs.edit().putInt("FREQUENCY_HI", Integer.parseInt(editHiFreq.getText().toString())).apply();
+                        prefs.edit().putInt("THRESHOLD_MULTIPLIER", seekbarThresholdMultiplier.getProgress()).apply();
 
-                    Toast.makeText(ActivityMain.this, "Saved", Toast.LENGTH_LONG).show();
+                        Toast.makeText(ActivityMain.this, "Saved", Toast.LENGTH_LONG).show();
+                    }
+                    else
+                    {
+                        Toast.makeText(ActivityMain.this, "Invalid input values", Toast.LENGTH_LONG).show();
+                    }
                 }
                 else
                 {
@@ -200,7 +199,16 @@ public class ActivityMain extends AppCompatActivity
 
         try
         {
-            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
+            if(locationManager.getAllProviders().contains(LocationManager.NETWORK_PROVIDER) && locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER))
+            {
+                locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
+                locationProvider = LocationManager.NETWORK_PROVIDER;
+            }
+            else
+            {
+                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
+                locationProvider = LocationManager.GPS_PROVIDER;
+            }
         }
         catch(SecurityException e)
         {
@@ -260,7 +268,8 @@ public class ActivityMain extends AppCompatActivity
     @Override
     public boolean onOptionsItemSelected(MenuItem item)
     {
-        switch (item.getItemId()) {
+        switch (item.getItemId())
+        {
             case R.id.navigation_settings:
                 startActivity(new Intent(this, ActivityAudioFiles.class));
                 return true;
@@ -278,9 +287,14 @@ public class ActivityMain extends AppCompatActivity
     {
         if(currentLocation == null)
         {
+            Log.d(LOG_TAG, "CurrentLocation = null");
             try
             {
-                return locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+                if(locationManager.getLastKnownLocation(locationProvider) == null)
+                {
+                    Log.d(LOG_TAG, "lastKnownLocation = null");
+                }
+                return locationManager.getLastKnownLocation(locationProvider);
             }
             catch(SecurityException e)
             {
@@ -288,5 +302,10 @@ public class ActivityMain extends AppCompatActivity
             }
         }
         return this.currentLocation;
+    }
+
+    public void setNumFftbins(int numFftbins)
+    {
+        viewVisualiser.setNumFftBins(numFftbins / 2);
     }
 }

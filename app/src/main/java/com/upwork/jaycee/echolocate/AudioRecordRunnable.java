@@ -28,7 +28,8 @@ public class AudioRecordRunnable implements Runnable
 
     private static final String AUDIO_FILENAME = Environment.getExternalStorageDirectory().getPath() + "/EchoLocate/audio";
 
-    private static final int RECORDER_SAMPLERATE = 44100;
+    // private static final int RECORDER_SAMPLERATE = 44100;
+    // private static final int RECORDER_SAMPLERATE = 8000;
     private static final int RECORDER_CHANNELS = AudioFormat.CHANNEL_IN_MONO;
     private static final int RECORDER_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
 
@@ -36,7 +37,7 @@ public class AudioRecordRunnable implements Runnable
     private static final int SIGNAL_TRIGGER_MIDDLE = 17000;
     private static final int SIGNAL_TRIGGER_LOWER = 15000;
 
-    private static final int NUM_FFT_BINS = 1024;       // Has to be power of 2
+    //private static final int NUM_FFT_BINS = 1024;       // Has to be power of 2
 
     private ActivityMain activityMain;
     private SharedPreferences prefs;
@@ -44,20 +45,53 @@ public class AudioRecordRunnable implements Runnable
     private boolean isRecording = false;
     private boolean isSaving = false;
 
+    private int bufferSize;
+    private int rate;
+    private int numFftBins;
+
     public AudioRecordRunnable(ActivityMain activityMain)
     {
         this.activityMain = activityMain;
         prefs = activityMain.getSharedPreferences("com.upwork.jaycee.echolocate", Context.MODE_PRIVATE);
+
+        // Initialise buffersize and sample rate to suit phone's specifications
+        for(int rate : new int[] {8000, 11025, 16000, 22050, 32000, 44100, 48000})
+        {
+            int size = AudioRecord.getMinBufferSize(rate, RECORDER_CHANNELS, RECORDER_ENCODING);
+            Log.d(LOG_TAG, "size: " + String.valueOf(size));
+            if(size > 0)
+            {
+                this.rate = rate;
+                this.bufferSize = size;
+            }
+        }
+        // Ensure num_fft_bins < buffersize
+        numFftBins = 2;
+        while(numFftBins*4 < bufferSize)
+        {
+            numFftBins *= 2;
+        }
+        activityMain.setNumFftbins(numFftBins);
+        Log.d(LOG_TAG, "Sample Rate: " + String.valueOf(rate));
+        Log.d(LOG_TAG, "NumFFT Bins: " + String.valueOf(numFftBins));
     }
 
     @Override
     public void run()
     {
-        int bufferSize = AudioRecord.getMinBufferSize(RECORDER_SAMPLERATE, RECORDER_CHANNELS, RECORDER_ENCODING);
+        //int bufferSize = AudioRecord.getMinBufferSize(rate, RECORDER_CHANNELS, RECORDER_ENCODING);
+        /*if(bufferSize > 0 && bufferSize != AudioRecord.ERROR_BAD_VALUE)
+        {
+            Log.e(LOG_TAG, "All Good: buffersize " + String.valueOf(bufferSize));
+        }
+        else
+        {
+            Log.e(LOG_TAG, "Problem");
+        }*/
         byte[] audioData = new byte[bufferSize];
 
         // Initialise the audio input
-        AudioRecord recorder = new AudioRecord(MediaRecorder.AudioSource.DEFAULT, RECORDER_SAMPLERATE, RECORDER_CHANNELS, RECORDER_ENCODING, bufferSize);
+        AudioRecord recorder = new AudioRecord(MediaRecorder.AudioSource.DEFAULT, rate, RECORDER_CHANNELS, RECORDER_ENCODING, bufferSize);
         recorder.startRecording();
 
         // Initialise the audio file writer
@@ -68,7 +102,11 @@ public class AudioRecordRunnable implements Runnable
 
         Date timestamp = new Date(time);
         // String filename = String.valueOf(activityMain.getCurrentLocation().getLatitude()) + "," + String.valueOf(activityMain.getCurrentLocation().getLongitude());
-        String filename = sdf.format(timestamp) + "_" + String.valueOf(activityMain.getCurrentLocation().getLatitude()) + "," + String.valueOf(activityMain.getCurrentLocation().getLongitude());
+        if(activityMain == null)
+        {
+            Log.e(LOG_TAG, "Activity is null");
+        }
+        String filename = sdf.format(timestamp) + "_" + String.valueOf(activityMain.getCurrentLocation().getLatitude());// + "," + String.valueOf(activityMain.getCurrentLocation().getLongitude());
 
         try
         {
@@ -84,7 +122,7 @@ public class AudioRecordRunnable implements Runnable
         Log.d(LOG_TAG, "Processing loop started");
 
         // Factor to divide Hz by to determine which bins the limits are in
-        double factor = (double)prefs.getInt("FREQUENCY_HI", SIGNAL_TRIGGER_UPPER) / NUM_FFT_BINS;
+        double factor = (double)prefs.getInt("FREQUENCY_HI", SIGNAL_TRIGGER_UPPER) / numFftBins;
         while(isRecording)
         {
             int read = recorder.read(audioData, 0, bufferSize);
@@ -190,9 +228,9 @@ public class AudioRecordRunnable implements Runnable
     public Complex[] convDataToComplex(byte[] audioData)
     {
         double temp;
-        Complex[] complexSignal = new Complex[NUM_FFT_BINS];
+        Complex[] complexSignal = new Complex[numFftBins];
 
-        for(int i = 0; i < NUM_FFT_BINS; i++)
+        for(int i = 0; i < numFftBins; i++)
         {
             temp = (double)((audioData[2 * i] & 0xFF) | (audioData[2 * i + 1] << 8)) / 32768.0F;
             complexSignal[i] = new Complex(temp, 0.0);      // Only interested in real part, i.e. the magnitude
@@ -203,10 +241,10 @@ public class AudioRecordRunnable implements Runnable
 
     public double[] absSignal(Complex[] complexSignal)
     {
-        double[] absSignal = new double[NUM_FFT_BINS / 2];
+        double[] absSignal = new double[numFftBins / 2];
         double maxFFTSample = 0.0;
 
-        for(int i = 0; i < (NUM_FFT_BINS / 2); i++)
+        for(int i = 0; i < (numFftBins / 2); i++)
         {
             absSignal[i] = Math.sqrt(Math.pow(complexSignal[i].re(), 2) + Math.pow(complexSignal[i].im(), 2));
             if(absSignal[i] > maxFFTSample)
@@ -254,7 +292,7 @@ public class AudioRecordRunnable implements Runnable
             writeShort(output, (short) 1); // audio format (1 = PCM)
             writeShort(output, (short) 1); // number of channels
             writeInt(output, 44100); // sample rate
-            writeInt(output, RECORDER_SAMPLERATE * 2); // byte rate
+            writeInt(output, rate * 2); // byte rate
             writeShort(output, (short) 2); // block align
             writeShort(output, (short) 16); // bits per sample
             writeString(output, "data"); // subchunk 2 id
