@@ -79,7 +79,6 @@ public class AudioRecordRunnable implements Runnable
     @Override
     public void run()
     {
-        //int bufferSize = AudioRecord.getMinBufferSize(rate, RECORDER_CHANNELS, RECORDER_ENCODING);
         if(bufferSize > 0 && bufferSize != AudioRecord.ERROR_BAD_VALUE)
         {
             Log.e(LOG_TAG, "All Good: buffersize " + String.valueOf(bufferSize));
@@ -91,7 +90,7 @@ public class AudioRecordRunnable implements Runnable
         byte[] audioData = new byte[bufferSize];
 
         // Initialise the audio input
-        AudioRecord recorder = new AudioRecord(MediaRecorder.AudioSource.DEFAULT, rate, RECORDER_CHANNELS, RECORDER_ENCODING, bufferSize);
+        AudioRecord recorder = new AudioRecord(MediaRecorder.AudioSource.MIC, rate, RECORDER_CHANNELS, RECORDER_ENCODING, bufferSize);
         if(recorder.getState() != AudioRecord.STATE_INITIALIZED)
         {
             Log.e(LOG_TAG, "Recorder NOT initialised properly");
@@ -119,7 +118,6 @@ public class AudioRecordRunnable implements Runnable
             activityMain.getViewVisualiser().setBinHeights(abs);
 
             double highFreqLevel = 0;
-            // Log.d(LOG_TAG, String.valueOf(prefs.getInt("FREQUENCY_HI", SIGNAL_TRIGGER_UPPER) / factor / 2 - 1) + String.valueOf(factor));
             for(int i = (int)(prefs.getInt("FREQUENCY_MED", SIGNAL_TRIGGER_MIDDLE) / factor / 2); i < prefs.getInt("FREQUENCY_HI", SIGNAL_TRIGGER_UPPER) / factor / 2; i ++)
             {
                 highFreqLevel += abs[i];
@@ -131,7 +129,6 @@ public class AudioRecordRunnable implements Runnable
             }
 
             if(highFreqLevel > prefs.getInt("THRESHOLD_MULTIPLIER", 2) * lowFreqLevel && !isSaving)
-            // if(highFreqLevel > 2 * lowFreqLevel && !isSaving)
             {
                 isSaving = true;
                 time = System.currentTimeMillis();
@@ -146,6 +143,7 @@ public class AudioRecordRunnable implements Runnable
                 });
             }
 
+            // Open file to save audio to
             if(isSaving && !fileOpened)
             {
                 // SimpleDateFormat sdf = new SimpleDateFormat("HH.mm.ss");
@@ -238,7 +236,6 @@ public class AudioRecordRunnable implements Runnable
         {
             Log.d(LOG_TAG, filename);
             rawToWave(new File(AUDIO_FILENAME + "/" + filename + ".raw"), new File(AUDIO_FILENAME + "/" + filename + ".wav"));
-            // rawToWave(new File(AUDIO_FILENAME + "/file.raw"), new File(AUDIO_FILENAME + "/file.wav"));
         }
         catch(IOException e)
         {
