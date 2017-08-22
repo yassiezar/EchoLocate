@@ -26,7 +26,7 @@ public class AudioRecordRunnable implements Runnable
 {
     private static final String LOG_TAG = AudioRecordRunnable.class.getSimpleName();
 
-    private static final String AUDIO_FILENAME = Environment.getExternalStorageDirectory().getPath() + "/EchoLocate/audio";
+    private static final String AUDIO_BASE_DIR = Environment.getExternalStorageDirectory().getPath() + "/EchoLocate/audio/";
 
     // private static final int RECORDER_SAMPLERATE = 44100;
     // private static final int RECORDER_SAMPLERATE = 8000;
@@ -147,7 +147,7 @@ public class AudioRecordRunnable implements Runnable
             if(isSaving && !fileOpened)
             {
                 // SimpleDateFormat sdf = new SimpleDateFormat("HH.mm.ss");
-                SimpleDateFormat sdf = new SimpleDateFormat("MMM.d''yy_HH.mm.ss");
+                SimpleDateFormat sdf = new SimpleDateFormat("MMMd''yy_HH-mm-ss");
 
                 Date timestamp = new Date(time);
                 // String filename = String.valueOf(activityMain.getCurrentLocation().getLatitude()) + "," + String.valueOf(activityMain.getCurrentLocation().getLongitude());
@@ -159,9 +159,10 @@ public class AudioRecordRunnable implements Runnable
 
                 try
                 {
-                    File dir = new File(AUDIO_FILENAME);
+                    File dir = new File(AUDIO_BASE_DIR);
                     dir.mkdirs();
                     os = new BufferedOutputStream(new FileOutputStream(new File(dir, filename + ".raw")));
+                    Log.d(LOG_TAG, "Saving RAW audio to: " + dir + filename + ".raw");
                 }
                 catch(FileNotFoundException e)
                 {
@@ -230,12 +231,12 @@ public class AudioRecordRunnable implements Runnable
             }
         }
 
-        Log.d(LOG_TAG, "Writing data to " + AUDIO_FILENAME);
+        Log.d(LOG_TAG, "Writing data to " + AUDIO_BASE_DIR);
         // Convert RAW to .wav file
         try
         {
             Log.d(LOG_TAG, filename);
-            rawToWave(new File(AUDIO_FILENAME + "/" + filename + ".raw"), new File(AUDIO_FILENAME + "/" + filename + ".wav"));
+            rawToWave(new File(AUDIO_BASE_DIR + filename + ".raw"), new File(AUDIO_BASE_DIR + filename + ".wav"));
         }
         catch(IOException e)
         {
@@ -311,7 +312,7 @@ public class AudioRecordRunnable implements Runnable
             writeInt(output, 16); // subchunk 1 size
             writeShort(output, (short) 1); // audio format (1 = PCM)
             writeShort(output, (short) 1); // number of channels
-            writeInt(output, 44100); // sample rate
+            writeInt(output, rate); // sample rate
             writeInt(output, rate * 2); // byte rate
             writeShort(output, (short) 2); // block align
             writeShort(output, (short) 16); // bits per sample
@@ -341,7 +342,6 @@ public class AudioRecordRunnable implements Runnable
         FileInputStream fis= new FileInputStream(f);
         try
         {
-
             int read = fis.read(bytes, 0, size);
             if (read < size)
             {
