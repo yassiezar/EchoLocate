@@ -59,7 +59,7 @@ public class AudioRecordRunnable implements Runnable
         {
             int size = AudioRecord.getMinBufferSize(rate, RECORDER_CHANNELS, RECORDER_ENCODING);
             Log.d(LOG_TAG, "size: " + String.valueOf(size));
-            if(size > 0)
+            if(size > 0 && size != this.bufferSize)
             {
                 this.rate = rate;
                 this.bufferSize = size;
@@ -80,49 +80,35 @@ public class AudioRecordRunnable implements Runnable
     public void run()
     {
         //int bufferSize = AudioRecord.getMinBufferSize(rate, RECORDER_CHANNELS, RECORDER_ENCODING);
-        /*if(bufferSize > 0 && bufferSize != AudioRecord.ERROR_BAD_VALUE)
+        if(bufferSize > 0 && bufferSize != AudioRecord.ERROR_BAD_VALUE)
         {
             Log.e(LOG_TAG, "All Good: buffersize " + String.valueOf(bufferSize));
         }
         else
         {
             Log.e(LOG_TAG, "Problem");
-        }*/
+        }
         byte[] audioData = new byte[bufferSize];
 
         // Initialise the audio input
         AudioRecord recorder = new AudioRecord(MediaRecorder.AudioSource.DEFAULT, rate, RECORDER_CHANNELS, RECORDER_ENCODING, bufferSize);
+        if(recorder.getState() != AudioRecord.STATE_INITIALIZED)
+        {
+            Log.e(LOG_TAG, "Recorder NOT initialised properly");
+        }
         recorder.startRecording();
 
         // Initialise the audio file writer
         BufferedOutputStream os = null;
         long time = System.currentTimeMillis();
-        // SimpleDateFormat sdf = new SimpleDateFormat("HH.mm.ss");
-        SimpleDateFormat sdf = new SimpleDateFormat("MMM.d''yy_HH.mm.ss");
-
-        Date timestamp = new Date(time);
-        // String filename = String.valueOf(activityMain.getCurrentLocation().getLatitude()) + "," + String.valueOf(activityMain.getCurrentLocation().getLongitude());
-        if(activityMain == null)
-        {
-            Log.e(LOG_TAG, "Activity is null");
-        }
-        String filename = sdf.format(timestamp) + "_" + String.valueOf(activityMain.getCurrentLocation().getLatitude());// + "," + String.valueOf(activityMain.getCurrentLocation().getLongitude());
-
-        try
-        {
-            File dir = new File(AUDIO_FILENAME);
-            dir.mkdirs();
-            os = new BufferedOutputStream(new FileOutputStream(new File(dir, filename + ".raw")));
-        }
-        catch(FileNotFoundException e)
-        {
-            Log.e(LOG_TAG, "Exception: " + e);
-        }
+        String filename = "";
 
         Log.d(LOG_TAG, "Processing loop started");
 
         // Factor to divide Hz by to determine which bins the limits are in
         double factor = (double)prefs.getInt("FREQUENCY_HI", SIGNAL_TRIGGER_UPPER) / numFftBins;
+
+        boolean fileOpened = false;
         while(isRecording)
         {
             int read = recorder.read(audioData, 0, bufferSize);
@@ -160,6 +146,32 @@ public class AudioRecordRunnable implements Runnable
                 });
             }
 
+            if(isSaving && !fileOpened)
+            {
+                // SimpleDateFormat sdf = new SimpleDateFormat("HH.mm.ss");
+                SimpleDateFormat sdf = new SimpleDateFormat("MMM.d''yy_HH.mm.ss");
+
+                Date timestamp = new Date(time);
+                // String filename = String.valueOf(activityMain.getCurrentLocation().getLatitude()) + "," + String.valueOf(activityMain.getCurrentLocation().getLongitude());
+                if(activityMain == null)
+                {
+                    Log.e(LOG_TAG, "Activity is null");
+                }
+                filename = sdf.format(timestamp) + "_" + String.valueOf(activityMain.getCurrentLocation().getLatitude()) + "," + String.valueOf(activityMain.getCurrentLocation().getLongitude());
+
+                try
+                {
+                    File dir = new File(AUDIO_FILENAME);
+                    dir.mkdirs();
+                    os = new BufferedOutputStream(new FileOutputStream(new File(dir, filename + ".raw")));
+                }
+                catch(FileNotFoundException e)
+                {
+                    Log.e(LOG_TAG, "File open exception: " + e);
+                }
+                fileOpened = true;
+            }
+
             if(isSaving &&
                     os != null &&
                     read != AudioRecord.ERROR_INVALID_OPERATION &&
@@ -178,6 +190,17 @@ public class AudioRecordRunnable implements Runnable
             {
                 isSaving = false;
                 time = 0;
+
+                try
+                {
+                    os.close();
+                    os = null;
+                }
+                catch(IOException e)
+                {
+                    Log.e(LOG_TAG, "File error: " + e);
+                }
+                fileOpened = false;
             }
 
             activityMain.runOnUiThread(new Runnable()
@@ -205,7 +228,7 @@ public class AudioRecordRunnable implements Runnable
             }
             catch (IOException e)
             {
-                Log.e(LOG_TAG, "Close error: " + e);
+                Log.e(LOG_TAG, "File error: " + e);
             }
         }
 
