@@ -16,6 +16,7 @@ import java.util.ArrayList;
 
 public class ActivityAudioFiles extends AppCompatActivity
 {
+    private static final String TAG = ActivityAudioFiles.class.getSimpleName();
     private static final String AUDIO_FILENAME = Environment.getExternalStorageDirectory().getPath() + "/EchoLocate/audio/";
 
     @Override
@@ -32,12 +33,20 @@ public class ActivityAudioFiles extends AppCompatActivity
         final File[] files = directory.listFiles();
 
         final ArrayList<String> fileList = new ArrayList<>();
-        for(File file : files)
+
+        if(files.length > 0)
         {
-            if(file.toString().contains(".wav"))
+            for (File file : files)
             {
-                fileList.add(file.getName());
+                if (file.toString().contains(".wav"))
+                {
+                    fileList.add(file.getName());
+                }
             }
+        }
+        else
+        {
+            Log.d(TAG, "File dir empty");
         }
 
         final ArrayAdapter arrayAdapter = new ArrayAdapter(this, android.R.layout.simple_list_item_1, fileList);

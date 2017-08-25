@@ -30,16 +30,12 @@ public class AudioRecordRunnable implements Runnable
 
     private static final String AUDIO_BASE_DIR = Environment.getExternalStorageDirectory().getPath() + "/EchoLocate/audio/";
 
-    // private static final int RECORDER_SAMPLERATE = 44100;
-    // private static final int RECORDER_SAMPLERATE = 8000;
     private static final int RECORDER_CHANNELS = AudioFormat.CHANNEL_IN_MONO;
     private static final int RECORDER_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
 
     private static final int SIGNAL_TRIGGER_UPPER = 20000;
     private static final int SIGNAL_TRIGGER_MIDDLE = 17000;
     private static final int SIGNAL_TRIGGER_LOWER = 15000;
-
-    //private static final int NUM_FFT_BINS = 1024;       // Has to be power of 2
 
     private ActivityMain activityMain;
     private SharedPreferences prefs;
@@ -83,7 +79,7 @@ public class AudioRecordRunnable implements Runnable
     {
         if(bufferSize > 0 && bufferSize != AudioRecord.ERROR_BAD_VALUE)
         {
-            Log.e(LOG_TAG, "All Good: buffersize " + String.valueOf(bufferSize));
+            Log.d(LOG_TAG, "All Good: buffersize " + String.valueOf(bufferSize));
         }
         else
         {
@@ -148,11 +144,9 @@ public class AudioRecordRunnable implements Runnable
             // Open file to save audio to
             if(isSaving && !fileOpened)
             {
-                // SimpleDateFormat sdf = new SimpleDateFormat("HH.mm.ss");
                 SimpleDateFormat sdf = new SimpleDateFormat("MMMd''yy_HH-mm-ss");
 
                 Date timestamp = new Date(time);
-                // String filename = String.valueOf(activityMain.getCurrentLocation().getLatitude()) + "," + String.valueOf(activityMain.getCurrentLocation().getLongitude());
                 if(activityMain == null)
                 {
                     Log.e(LOG_TAG, "Activity is null");
@@ -164,9 +158,9 @@ public class AudioRecordRunnable implements Runnable
                 }
                 catch (NullPointerException e)
                 {
-                    Log.d(LOG_TAG, "locationManager is null: " + e);
-                    ACRA.getErrorReporter().handleException(e);
                     filename = sdf.format(timestamp);
+                    Log.d(LOG_TAG, "locationManager is null: " + e);
+                    // ACRA.getErrorReporter().handleException(e);
                 }
 
                 try

@@ -50,7 +50,7 @@ public class ActivityMain extends AppCompatActivity
 
     private boolean isRecording = false;
 
-    private String locationProvider;
+    private String locationProvider = LocationManager.NETWORK_PROVIDER;     // Set as default
 
     public void toggleRecorder(boolean isRecording)
     {
@@ -164,11 +164,13 @@ public class ActivityMain extends AppCompatActivity
             {
                 if (shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO))
                 {
+                    Log.d(LOG_TAG, "Permission: no access to audio");
                     Toast.makeText(this, "App required access to audio", Toast.LENGTH_SHORT).show();
                 }
 
                 if (shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION))
                 {
+                    Log.d(LOG_TAG, "Permission: not access to GPS");
                     Toast.makeText(this, "App requires access to the GPS", Toast.LENGTH_SHORT).show();
                 }
                 requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_PERMISSION_RESULT);
@@ -222,6 +224,7 @@ public class ActivityMain extends AppCompatActivity
 
             else
             {
+                Log.d(LOG_TAG, "No location service found");
                 Toast.makeText(this, "Could not find a location. Is it enabled?", Toast.LENGTH_LONG).show();
             }
 
@@ -267,7 +270,7 @@ public class ActivityMain extends AppCompatActivity
                     grantResults[1] != PackageManager.PERMISSION_GRANTED &&
                     grantResults[2] != PackageManager.PERMISSION_GRANTED)
             {
-                Toast.makeText(getApplicationContext(), "Application will not have audio on record", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getApplicationContext(), "Application needs these permissions to work properly", Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -287,7 +290,14 @@ public class ActivityMain extends AppCompatActivity
         switch (item.getItemId())
         {
             case R.id.navigation_settings:
-                startActivity(new Intent(this, ActivityAudioFiles.class));
+                if(isRecording)
+                {
+                    Toast.makeText(this, "Please stop recording", Toast.LENGTH_SHORT).show();
+                }
+                else
+                {
+                    startActivity(new Intent(this, ActivityAudioFiles.class));
+                }
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
@@ -312,7 +322,7 @@ public class ActivityMain extends AppCompatActivity
 
                     return null;
                 }
-
+                Log.d(LOG_TAG, "Have location lock");
                 return locationManager.getLastKnownLocation(locationProvider);
             }
             catch(SecurityException e)
