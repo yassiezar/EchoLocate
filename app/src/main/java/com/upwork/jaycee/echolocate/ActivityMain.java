@@ -25,6 +25,8 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.acra.ACRA;
+
 public class ActivityMain extends AppCompatActivity
 {
     private static final String LOG_TAG = ActivityMain.class.getSimpleName();
@@ -156,13 +158,18 @@ public class ActivityMain extends AppCompatActivity
                     ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED &&
                     ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED)
             {
-                // put your code for Version>=Marshmallow
+                Log.d(LOG_TAG, "All permissions granted");
             }
             else
             {
                 if (shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO))
                 {
                     Toast.makeText(this, "App required access to audio", Toast.LENGTH_SHORT).show();
+                }
+
+                if (shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION))
+                {
+                    Toast.makeText(this, "App requires access to the GPS", Toast.LENGTH_SHORT).show();
                 }
                 requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_PERMISSION_RESULT);
             }
@@ -199,16 +206,25 @@ public class ActivityMain extends AppCompatActivity
 
         try
         {
-            if(locationManager.getAllProviders().contains(LocationManager.NETWORK_PROVIDER) && locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER))
-            {
-                locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
-                locationProvider = LocationManager.NETWORK_PROVIDER;
-            }
-            else
+            if(locationManager.getAllProviders().contains(LocationManager.GPS_PROVIDER) && locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER))
             {
                 locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
                 locationProvider = LocationManager.GPS_PROVIDER;
+                Log.d(LOG_TAG, "Location service found, using GPS");
             }
+
+            else if(locationManager.getAllProviders().contains(LocationManager.NETWORK_PROVIDER) && locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER))
+            {
+                locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
+                locationProvider = LocationManager.NETWORK_PROVIDER;
+                Log.d(LOG_TAG, "Location service found, using Network");
+            }
+
+            else
+            {
+                Toast.makeText(this, "Could not find a location. Is it enabled?", Toast.LENGTH_LONG).show();
+            }
+
         }
         catch(SecurityException e)
         {
@@ -293,12 +309,16 @@ public class ActivityMain extends AppCompatActivity
                 if(locationManager.getLastKnownLocation(locationProvider) == null)
                 {
                     Log.d(LOG_TAG, "lastKnownLocation = null");
+
+                    return null;
                 }
+
                 return locationManager.getLastKnownLocation(locationProvider);
             }
             catch(SecurityException e)
             {
                 Log.e(LOG_TAG, "Location security exception: " + e);
+                ACRA.getErrorReporter().handleException(e);
             }
         }
         return this.currentLocation;

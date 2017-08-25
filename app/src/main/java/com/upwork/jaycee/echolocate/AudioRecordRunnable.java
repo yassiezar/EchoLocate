@@ -9,6 +9,8 @@ import android.os.Environment;
 import android.util.Log;
 import android.widget.Toast;
 
+import org.acra.ACRA;
+
 import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -155,7 +157,17 @@ public class AudioRecordRunnable implements Runnable
                 {
                     Log.e(LOG_TAG, "Activity is null");
                 }
-                filename = sdf.format(timestamp) + "_" + String.valueOf(activityMain.getCurrentLocation().getLatitude()) + "," + String.valueOf(activityMain.getCurrentLocation().getLongitude());
+
+                try
+                {
+                    filename = sdf.format(timestamp) + "_" + String.valueOf(activityMain.getCurrentLocation().getLatitude()) + "," + String.valueOf(activityMain.getCurrentLocation().getLongitude());
+                }
+                catch (NullPointerException e)
+                {
+                    Log.d(LOG_TAG, "locationManager is null: " + e);
+                    ACRA.getErrorReporter().handleException(e);
+                    filename = sdf.format(timestamp);
+                }
 
                 try
                 {
