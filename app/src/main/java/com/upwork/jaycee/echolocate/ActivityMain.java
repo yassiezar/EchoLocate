@@ -8,6 +8,7 @@ import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.location.LocationProvider;
 import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -34,24 +35,20 @@ public class ActivityMain extends AppCompatActivity
 
     private static final int REQUEST_PERMISSION_RESULT = 100;
 
-    // private static final int NUM_FFT_BINS = 1024/2;       // Has to be power of 2
-
     private AudioRecordRunnable audioRecorderRunnable;
     private Handler audioRecorderHandler;
     private HandlerThread handlerThread;
-    private LocationManager locationManager;
-    private LocationListener locationListener;
-    private Location currentLocation;
     private SharedPreferences prefs;
 
     private ViewVisualiser viewVisualiser;
     private EditText editLowFreq,editMedFreq, editHiFreq;
     private TextView textviewThresholdMultiplier;
     private SeekBar seekbarThresholdMultiplier;
+    private LocationManager locationManager;
+    private LocationListener gpsLocationListener, networkLocationListener;
+    private Location currentGPSLocation, currentNetworkLocation, currentLocation;
 
     private boolean isRecording = false;
-
-    private String locationProvider = LocationManager.NETWORK_PROVIDER;     // Set as default
 
     public void toggleRecorder(boolean isRecording)
     {
@@ -108,7 +105,6 @@ public class ActivityMain extends AppCompatActivity
         textviewThresholdMultiplier.setText("Threshold multiplier: " + String.valueOf(seekbarThresholdMultiplier.getProgress()));
 
         viewVisualiser = (ViewVisualiser)findViewById(R.id.view_visualiser);
-        // viewVisualiser.setNumFftBins(NUM_FFT_BINS / 2);
 
         findViewById(R.id.button_save).setOnClickListener(new View.OnClickListener()
         {
@@ -193,67 +189,70 @@ public class ActivityMain extends AppCompatActivity
         handlerThread.start();
         audioRecorderHandler = new Handler(handlerThread.getLooper());
 
-        locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
-        locationListener = new LocationListener()
+        /* Start location service */
+        locationManager = (LocationManager)this.getSystemService(Context.LOCATION_SERVICE);
+
+        /* Check if location service is enabled, force user to turn it on */
+        if(!(locationManager.getAllProviders().contains(LocationManager.GPS_PROVIDER) && locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) &&
+            !(locationManager.getAllProviders().contains(LocationManager.NETWORK_PROVIDER) && locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)))
         {
+            Log.d(LOG_TAG, "No location service found");
+            Toast.makeText(this, "Please enable location services?", Toast.LENGTH_LONG).show();
+            startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
+        }
+
+        gpsLocationListener = new LocationListener()
+        {
+            @Override
             public void onLocationChanged(Location location)
             {
-                // Called when a new location is found by the network location provider.
-                currentLocation = location;
+                currentGPSLocation = location;
             }
 
-            public void onStatusChanged(String provider, int status, Bundle extras) {}
-            public void onProviderEnabled(String provider) {}
-            public void onProviderDisabled(String provider) {}
+            @Override
+            public void onStatusChanged(String provider, int status, Bundle extras) { }
+
+            @Override
+            public void onProviderEnabled(String provider) { }
+
+            @Override
+            public void onProviderDisabled(String provider) { }
+        };
+
+
+        networkLocationListener = new LocationListener()
+        {
+            @Override
+            public void onLocationChanged(Location location)
+            {
+                currentNetworkLocation = location;
+            }
+
+            @Override
+            public void onStatusChanged(String provider, int status, Bundle extras) { }
+
+            @Override
+            public void onProviderEnabled(String provider) { }
+
+            @Override
+            public void onProviderDisabled(String provider) { }
         };
 
         try
         {
-            boolean gpsEnabled = (locationManager.getAllProviders().contains(LocationManager.GPS_PROVIDER) && locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER));
-            boolean networkEnabled = (locationManager.getAllProviders().contains(LocationManager.NETWORK_PROVIDER) && locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER));
-            /* Check if location service is enabled, prompt user to enable if not */
-            if(!gpsEnabled && !networkEnabled)
+            if(locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER))
             {
-                Log.d(LOG_TAG, "No location service found");
-                Toast.makeText(this, "Please enable the location service", Toast.LENGTH_LONG).show();
-                startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
+                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, gpsLocationListener);
             }
-
-            /* Location enabled, use GPS */
-            else if(gpsEnabled)
+            if(locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER))
             {
-                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
-                locationProvider = LocationManager.GPS_PROVIDER;
-                Log.d(LOG_TAG, "Location service found, using GPS");
+                locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, networkLocationListener);
             }
-            /*if(locationManager.getAllProviders().contains(LocationManager.GPS_PROVIDER) && locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER))
-            {
-                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
-                locationProvider = LocationManager.GPS_PROVIDER;
-                Log.d(LOG_TAG, "Location service found, using GPS");
-            }
-
-            // Check if GPS is available, if not, use network. Helpful if bad signal, etc
-            if((locationManager.getAllProviders().contains(LocationManager.NETWORK_PROVIDER)
-                    && locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER))
-                    || locationManager.getLastKnownLocation(locationProvider) == null)
-            {
-                locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
-                locationProvider = LocationManager.NETWORK_PROVIDER;
-                Log.d(LOG_TAG, "Location service found, using Network");
-            }
-
-            else
-            {
-                Log.d(LOG_TAG, "No location service found");
-                Toast.makeText(this, "Please enable the location service", Toast.LENGTH_LONG).show();
-                startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
-            }*/
-
         }
-        catch(SecurityException e)
+        catch (SecurityException e)
         {
-            Log.e(LOG_TAG, "Location security exception: " + e);
+            Log.e(LOG_TAG, "Security exception: " + e);
+            Toast.makeText(this, "Please enable location permissions", Toast.LENGTH_LONG).show();
         }
     }
 
@@ -272,10 +271,13 @@ public class ActivityMain extends AppCompatActivity
             handlerThread = null;
         }
 
-        if(locationManager != null)
+        if(locationManager != null && gpsLocationListener != null && networkLocationListener != null)
         {
-            locationManager.removeUpdates(locationListener);
+            locationManager.removeUpdates(gpsLocationListener);
+            locationManager.removeUpdates(networkLocationListener);
             locationManager = null;
+            networkLocationListener = null;
+            gpsLocationListener = null;
         }
 
         isRecording = false;
@@ -333,28 +335,101 @@ public class ActivityMain extends AppCompatActivity
 
     public Location getCurrentLocation()
     {
+        Log.d(LOG_TAG, "Using GPS location");
+        currentLocation = currentGPSLocation;
+
+        if(isBetterLocation(currentNetworkLocation, currentLocation))
+        {
+            Log.d(LOG_TAG, "Using network location");
+            currentLocation = currentNetworkLocation;
+        }
+
         if(currentLocation == null)
         {
-            Log.d(LOG_TAG, "CurrentLocation = null");
             try
             {
-                if(locationManager.getLastKnownLocation(locationProvider) == null)
+                Log.d(LOG_TAG, "No lock on current location");
+                if (isBetterLocation(locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER), locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)))
                 {
-                    Log.d(LOG_TAG, "lastKnownLocation = null");
-
-                    return null;
+                    return locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
                 }
-                Log.d(LOG_TAG, "Have location lock");
-                return locationManager.getLastKnownLocation(locationProvider);
+
+                else
+                {
+                    return locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                }
             }
             catch(SecurityException e)
             {
-                Log.e(LOG_TAG, "Location security exception: " + e);
-                ACRA.getErrorReporter().handleException(e);
+                Log.d(LOG_TAG, "Security error: location permission granted?");
             }
         }
-        return this.currentLocation;
+
+        // Log.d(LOG_TAG, "Current GPS Location: " + currentGPSLocation.toString());
+        Log.d(LOG_TAG, "Current network Location: " + currentNetworkLocation.toString());
+        return currentLocation;
     }
+
+    public boolean isBetterLocation(Location newLocation, Location currentLocation)
+    {
+        int tenSeconds = 1000 * 10;
+
+        if(currentLocation == null)
+        {
+            return true;
+        }
+
+        // Check whether the new location fix is newer or older
+        long timeDelta = newLocation.getTime() - currentLocation.getTime();
+        boolean isSignificantlyNewer = timeDelta > tenSeconds;
+        boolean isSignificantlyOlder = timeDelta < -tenSeconds;
+        boolean isNewer = timeDelta > 0;
+
+        if(isSignificantlyNewer)
+        {
+            return true;
+        }
+        else if(isSignificantlyOlder)
+        {
+            return false;
+        }
+
+        // Check whether the new location fix is more or less accurate
+        int accuracyDelta = (int) (newLocation.getAccuracy() - currentLocation.getAccuracy());
+        boolean isLessAccurate = accuracyDelta > 0;
+        boolean isMoreAccurate = accuracyDelta < 0;
+        boolean isSignificantlyLessAccurate = accuracyDelta > 200;
+
+        // Check if the old and new location are from the same provider
+        boolean isFromSameProvider = isSameProvider(newLocation.getProvider(), currentLocation.getProvider());
+
+        // Determine location quality using a combination of timeliness and accuracy
+        if (isMoreAccurate)
+        {
+            return true;
+        }
+        else if (isNewer && !isLessAccurate)
+        {
+            return true;
+        }
+        else if (isNewer && !isSignificantlyLessAccurate && isFromSameProvider)
+        {
+            return true;
+        }
+        return false;
+    }
+
+    /** Checks whether two providers are the same */
+    private boolean isSameProvider(String provider1, String provider2)
+    {
+        if (provider1 == null)
+        {
+            return provider2 == null;
+        }
+
+        return provider1.equals(provider2);
+    }
+
 
     public void setNumFftbins(int numFftbins)
     {
