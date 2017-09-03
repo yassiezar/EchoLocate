@@ -11,6 +11,7 @@ import android.location.LocationManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -208,14 +209,34 @@ public class ActivityMain extends AppCompatActivity
 
         try
         {
-            if(locationManager.getAllProviders().contains(LocationManager.GPS_PROVIDER) && locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER))
+            boolean gpsEnabled = (locationManager.getAllProviders().contains(LocationManager.GPS_PROVIDER) && locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER));
+            boolean networkEnabled = (locationManager.getAllProviders().contains(LocationManager.NETWORK_PROVIDER) && locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER));
+            /* Check if location service is enabled, prompt user to enable if not */
+            if(!gpsEnabled && !networkEnabled)
+            {
+                Log.d(LOG_TAG, "No location service found");
+                Toast.makeText(this, "Please enable the location service", Toast.LENGTH_LONG).show();
+                startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
+            }
+
+            /* Location enabled, use GPS */
+            else if(gpsEnabled)
+            {
+                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
+                locationProvider = LocationManager.GPS_PROVIDER;
+                Log.d(LOG_TAG, "Location service found, using GPS");
+            }
+            /*if(locationManager.getAllProviders().contains(LocationManager.GPS_PROVIDER) && locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER))
             {
                 locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
                 locationProvider = LocationManager.GPS_PROVIDER;
                 Log.d(LOG_TAG, "Location service found, using GPS");
             }
 
-            else if(locationManager.getAllProviders().contains(LocationManager.NETWORK_PROVIDER) && locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER))
+            // Check if GPS is available, if not, use network. Helpful if bad signal, etc
+            if((locationManager.getAllProviders().contains(LocationManager.NETWORK_PROVIDER)
+                    && locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER))
+                    || locationManager.getLastKnownLocation(locationProvider) == null)
             {
                 locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
                 locationProvider = LocationManager.NETWORK_PROVIDER;
@@ -225,8 +246,9 @@ public class ActivityMain extends AppCompatActivity
             else
             {
                 Log.d(LOG_TAG, "No location service found");
-                Toast.makeText(this, "Could not find a location. Is it enabled?", Toast.LENGTH_LONG).show();
-            }
+                Toast.makeText(this, "Please enable the location service", Toast.LENGTH_LONG).show();
+                startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
+            }*/
 
         }
         catch(SecurityException e)

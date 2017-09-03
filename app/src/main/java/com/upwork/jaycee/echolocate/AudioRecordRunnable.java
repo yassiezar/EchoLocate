@@ -163,6 +163,7 @@ public class AudioRecordRunnable implements Runnable
                     // ACRA.getErrorReporter().handleException(e);
                 }
 
+                Log.d(LOG_TAG, "fileName = " + filename);
                 try
                 {
                     File dir = new File(AUDIO_BASE_DIR);
@@ -191,7 +192,7 @@ public class AudioRecordRunnable implements Runnable
                     Log.e(LOG_TAG, "File write error: " + e);
                 }
             }
-            else if(System.currentTimeMillis() - time >= 60000)
+            else if(System.currentTimeMillis() - time >= 60000 && os != null)
             {
                 isSaving = false;
                 time = 0;
@@ -237,7 +238,7 @@ public class AudioRecordRunnable implements Runnable
             }
         }
 
-        Log.d(LOG_TAG, "Writing data to " + AUDIO_BASE_DIR);
+        Log.d(LOG_TAG, "Writing data to " + AUDIO_BASE_DIR + filename + ".raw");
         // Convert RAW to .wav file
         try
         {
