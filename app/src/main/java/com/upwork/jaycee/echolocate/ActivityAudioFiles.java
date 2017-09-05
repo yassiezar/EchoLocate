@@ -56,13 +56,11 @@ public class ActivityAudioFiles extends AppCompatActivity
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int position, long l)
             {
+                /* Open up app selection for audio files on click */
                 File file = new File(AUDIO_FILENAME + fileList.get(position));
                 Intent sendIntent = new Intent(Intent.ACTION_VIEW);
                 Log.d("Files", "Opening file: " + file.toString());
                 sendIntent.setDataAndType(Uri.fromFile(file), "audio/*");
-                // sendIntent.setData(Uri.fromFile(file));
-                // sendIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                //Intent j = Intent.createChooser(sendIntent, "Choose an application to open with:");
                 startActivity(Intent.createChooser(sendIntent, null));
             }
         });
