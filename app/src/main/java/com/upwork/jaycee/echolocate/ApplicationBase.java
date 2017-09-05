@@ -17,7 +17,7 @@ public class ApplicationBase extends Application
     @Override
     public void onCreate()
     {
-        // The following line triggers the initialization of ACRA
+        /* The following line triggers the initialization of ACRA */
         super.onCreate();
         ACRA.init(this);
     }

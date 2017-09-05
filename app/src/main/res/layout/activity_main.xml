@@ -29,7 +29,8 @@
             <EditText
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:id="@+id/edit_freq_lo"/>
+                android:id="@+id/edit_freq_lo"
+                android:inputType="number"/>
         </LinearLayout>
         <LinearLayout
             android:layout_width="wrap_content"
@@ -43,7 +44,8 @@
             <EditText
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:id="@+id/edit_freq_med"/>
+                android:id="@+id/edit_freq_med"
+                android:inputType="number"/>
         </LinearLayout>
         <LinearLayout
             android:layout_width="wrap_content"
@@ -57,7 +59,8 @@
             <EditText
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:id="@+id/edit_freq_hi"/>
+                android:id="@+id/edit_freq_hi"
+                android:inputType="number"/>
         </LinearLayout>
     </LinearLayout>
 

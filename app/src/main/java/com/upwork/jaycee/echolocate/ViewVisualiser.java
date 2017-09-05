@@ -5,7 +5,6 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.View;
 
 public class ViewVisualiser extends View
@@ -13,7 +12,6 @@ public class ViewVisualiser extends View
     private int numFftBins = 512;       // Give default, non-zero intialiser to avoid zero div
     private int width, height;
     private double[] binHeights;
-    private double peak, normFactor;
 
     private Context context;
     private Paint paint = new Paint();
@@ -72,10 +70,5 @@ public class ViewVisualiser extends View
     public void setBinHeights(double[] binHeights)
     {
         this.binHeights = binHeights;
-    }
-
-    public void setPeak(double peak)
-    {
-        this.peak = peak;
     }
 }

@@ -8,7 +8,6 @@ import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
-import android.location.LocationProvider;
 import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -26,8 +25,6 @@ import android.widget.EditText;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import org.acra.ACRA;
 
 public class ActivityMain extends AppCompatActivity
 {
@@ -63,8 +60,8 @@ public class ActivityMain extends AppCompatActivity
         else
         {
             Log.d(LOG_TAG, "Stopping recording");
-
-            audioRecorderRunnable.setRecording(false);        }
+            audioRecorderRunnable.setRecording(false);
+        }
     }
 
     @Override
@@ -73,8 +70,10 @@ public class ActivityMain extends AppCompatActivity
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        /* Check permissions on start of app */
         checkAndRequestPermission();
 
+        /* Load preferences for frequency limits */
         prefs = this.getSharedPreferences("com.upwork.jaycee.echolocate", Context.MODE_PRIVATE);
         editLowFreq = (EditText)findViewById(R.id.edit_freq_lo);
         editLowFreq.setText(String.valueOf(prefs.getInt("FREQUENCY_LOW", 15000)));
@@ -83,6 +82,7 @@ public class ActivityMain extends AppCompatActivity
         editHiFreq = (EditText)findViewById(R.id.edit_freq_hi);
         editHiFreq.setText(String.valueOf(prefs.getInt("FREQUENCY_HI", 20000)));
 
+        /* Initialise variables */
         textviewThresholdMultiplier = (TextView)findViewById(R.id.textview_threshold_multiplier);
 
         seekbarThresholdMultiplier = (SeekBar)findViewById(R.id.seekbar_threshold);
@@ -111,6 +111,7 @@ public class ActivityMain extends AppCompatActivity
             @Override
             public void onClick(View view)
             {
+                /* Save new settings to preferences if app is not recording */
                 if(!isRecording)
                 {
                     if(Integer.parseInt(editLowFreq.getText().toString()) < Integer.parseInt(editMedFreq.getText().toString()) &&
@@ -131,7 +132,6 @@ public class ActivityMain extends AppCompatActivity
                 else
                 {
                     Toast.makeText(ActivityMain.this, "Please stop recording before save", Toast.LENGTH_LONG).show();
-
                 }
             }
         });
@@ -174,10 +174,7 @@ public class ActivityMain extends AppCompatActivity
             }
 
         }
-        else
-        {
-            // put your code for Version < Marshmallow
-        }
+        else { /* Code for Marshmellow */ }
     }
 
     @Override
@@ -185,6 +182,7 @@ public class ActivityMain extends AppCompatActivity
     {
         super.onResume();
 
+        /* Start new thread handle the audio recorder */
         handlerThread = new HandlerThread("");
         handlerThread.start();
         audioRecorderHandler = new Handler(handlerThread.getLooper());
@@ -201,6 +199,7 @@ public class ActivityMain extends AppCompatActivity
             startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
         }
 
+        /* Start GPS location listener */
         gpsLocationListener = new LocationListener()
         {
             @Override
@@ -219,7 +218,7 @@ public class ActivityMain extends AppCompatActivity
             public void onProviderDisabled(String provider) { }
         };
 
-
+        /* Start network location listener */
         networkLocationListener = new LocationListener()
         {
             @Override
@@ -238,12 +237,17 @@ public class ActivityMain extends AppCompatActivity
             public void onProviderDisabled(String provider) { }
         };
 
+        /*
+         *  Enable GPS and network if both are present and start requesting location updates.
+         *  Set to 0 interval for now, increase later to increase battery performance
+         */
         try
         {
             if(locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER))
             {
                 locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, gpsLocationListener);
             }
+
             if(locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER))
             {
                 locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, networkLocationListener);
@@ -261,6 +265,7 @@ public class ActivityMain extends AppCompatActivity
     {
         super.onPause();
 
+        /* Kill and clean the audio recorder */
         if(audioRecorderRunnable != null)
         {
             audioRecorderRunnable.setRecording(false);
@@ -271,6 +276,7 @@ public class ActivityMain extends AppCompatActivity
             handlerThread = null;
         }
 
+        /* Kill and clean the location listeners */
         if(locationManager != null && gpsLocationListener != null && networkLocationListener != null)
         {
             locationManager.removeUpdates(gpsLocationListener);
@@ -335,15 +341,21 @@ public class ActivityMain extends AppCompatActivity
 
     public Location getCurrentLocation()
     {
+        /* Set GPS location as the default */
         Log.d(LOG_TAG, "Using GPS location");
         currentLocation = currentGPSLocation;
 
+        /*
+         * Compare GPS location to network and select most accurate one
+         * Helpful if the GPS is not available or has bad signal
+         */
         if(isBetterLocation(currentNetworkLocation, currentLocation))
         {
             Log.d(LOG_TAG, "Using network location");
             currentLocation = currentNetworkLocation;
         }
 
+        /* No new location available from GPS or the network so use the last known position */
         if(currentLocation == null)
         {
             try
@@ -365,7 +377,6 @@ public class ActivityMain extends AppCompatActivity
             }
         }
 
-        // Log.d(LOG_TAG, "Current GPS Location: " + currentGPSLocation.toString());
         Log.d(LOG_TAG, "Current network Location: " + currentNetworkLocation.toString());
         return currentLocation;
     }
@@ -379,7 +390,7 @@ public class ActivityMain extends AppCompatActivity
             return true;
         }
 
-        // Check whether the new location fix is newer or older
+        /* Check whether the new location fix is newer or older */
         long timeDelta = newLocation.getTime() - currentLocation.getTime();
         boolean isSignificantlyNewer = timeDelta > tenSeconds;
         boolean isSignificantlyOlder = timeDelta < -tenSeconds;
@@ -394,16 +405,16 @@ public class ActivityMain extends AppCompatActivity
             return false;
         }
 
-        // Check whether the new location fix is more or less accurate
+        /* Check whether the new location fix is more or less accurate */
         int accuracyDelta = (int) (newLocation.getAccuracy() - currentLocation.getAccuracy());
         boolean isLessAccurate = accuracyDelta > 0;
         boolean isMoreAccurate = accuracyDelta < 0;
         boolean isSignificantlyLessAccurate = accuracyDelta > 200;
 
-        // Check if the old and new location are from the same provider
+        /* Check if the old and new location are from the same provider */
         boolean isFromSameProvider = isSameProvider(newLocation.getProvider(), currentLocation.getProvider());
 
-        // Determine location quality using a combination of timeliness and accuracy
+        /* Determine location quality using a combination of timeliness and accuracy */
         if (isMoreAccurate)
         {
             return true;
@@ -419,7 +430,7 @@ public class ActivityMain extends AppCompatActivity
         return false;
     }
 
-    /** Checks whether two providers are the same */
+    /* Checks whether two providers are the same */
     private boolean isSameProvider(String provider1, String provider2)
     {
         if (provider1 == null)

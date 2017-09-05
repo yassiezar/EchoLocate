@@ -8,9 +8,6 @@ import android.media.MediaRecorder;
 import android.os.Environment;
 import android.util.Log;
 import android.widget.Toast;
-
-import org.acra.ACRA;
-
 import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -24,7 +21,7 @@ import java.nio.ByteOrder;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-public class AudioRecordRunnable implements Runnable
+class AudioRecordRunnable implements Runnable
 {
     private static final String LOG_TAG = AudioRecordRunnable.class.getSimpleName();
 
@@ -47,12 +44,12 @@ public class AudioRecordRunnable implements Runnable
     private int rate;
     private int numFftBins;
 
-    public AudioRecordRunnable(ActivityMain activityMain)
+    AudioRecordRunnable(ActivityMain activityMain)
     {
         this.activityMain = activityMain;
         prefs = activityMain.getSharedPreferences("com.upwork.jaycee.echolocate", Context.MODE_PRIVATE);
 
-        // Initialise buffersize and sample rate to suit phone's specifications
+        /* Initialise buffersize and sample rate to suit phone's specifications */
         for(int rate : new int[] {8000, 11025, 16000, 22050, 32000, 44100, 48000})
         {
             int size = AudioRecord.getMinBufferSize(rate, RECORDER_CHANNELS, RECORDER_ENCODING);
@@ -63,9 +60,10 @@ public class AudioRecordRunnable implements Runnable
                 this.bufferSize = size;
             }
         }
-        // Ensure num_fft_bins < buffersize
+
+        /* Ensure num_fft_bins < buffersize */
         numFftBins = 2;
-        while(numFftBins*4 < bufferSize)
+        while(numFftBins * 4 < bufferSize)
         {
             numFftBins *= 2;
         }
@@ -77,17 +75,9 @@ public class AudioRecordRunnable implements Runnable
     @Override
     public void run()
     {
-        if(bufferSize > 0 && bufferSize != AudioRecord.ERROR_BAD_VALUE)
-        {
-            Log.d(LOG_TAG, "All Good: buffersize " + String.valueOf(bufferSize));
-        }
-        else
-        {
-            Log.e(LOG_TAG, "Problem");
-        }
         byte[] audioData = new byte[bufferSize];
 
-        // Initialise the audio input
+        /* Initialise the audio input */
         AudioRecord recorder = new AudioRecord(MediaRecorder.AudioSource.MIC, rate, RECORDER_CHANNELS, RECORDER_ENCODING, bufferSize);
         if(recorder.getState() != AudioRecord.STATE_INITIALIZED)
         {
@@ -95,26 +85,30 @@ public class AudioRecordRunnable implements Runnable
         }
         recorder.startRecording();
 
-        // Initialise the audio file writer
+        /* Initialise the audio file writer */
         BufferedOutputStream os = null;
         long time = System.currentTimeMillis();
         String filename = "";
 
         Log.d(LOG_TAG, "Processing loop started");
 
-        // Factor to divide Hz by to determine which bins the limits are in
+        /* Factor to divide Hz by to determine which bins the limits are in */
         double factor = (double)prefs.getInt("FREQUENCY_HI", SIGNAL_TRIGGER_UPPER) / numFftBins;
 
         boolean fileOpened = false;
+
+        /* Start recording and stop after signal from user click */
         while(isRecording)
         {
             int read = recorder.read(audioData, 0, bufferSize);
 
+            /* Convert the raw PCM audio data to complex data, apply FFT and update the visualiser*/
             Complex[] complexSignal = convDataToComplex(audioData);
             Complex[] fft = FFT.fft(complexSignal);
             double[] abs = absSignal(fft);
             activityMain.getViewVisualiser().setBinHeights(abs);
 
+            /* Accumulate the signals in the selected intervals and trigger file save if threshold is passed */
             double highFreqLevel = 0;
             for(int i = (int)(prefs.getInt("FREQUENCY_MED", SIGNAL_TRIGGER_MIDDLE) / factor / 2); i < prefs.getInt("FREQUENCY_HI", SIGNAL_TRIGGER_UPPER) / factor / 2; i ++)
             {
@@ -141,9 +135,10 @@ public class AudioRecordRunnable implements Runnable
                 });
             }
 
-            // Open file to save audio to
+            /* Open file and start saving audio to it */
             if(isSaving && !fileOpened)
             {
+                /* Get timestamp */
                 SimpleDateFormat sdf = new SimpleDateFormat("MMMd''yy_HH-mm-ss");
 
                 Date timestamp = new Date(time);
@@ -152,6 +147,7 @@ public class AudioRecordRunnable implements Runnable
                     Log.e(LOG_TAG, "Activity is null");
                 }
 
+                /* Get current location estimate and make timestamp + geolocation filename */
                 try
                 {
                     filename = sdf.format(timestamp) + "_" + String.valueOf(activityMain.getCurrentLocation().getLatitude()) + "," + String.valueOf(activityMain.getCurrentLocation().getLongitude());
@@ -160,9 +156,9 @@ public class AudioRecordRunnable implements Runnable
                 {
                     filename = sdf.format(timestamp);
                     Log.d(LOG_TAG, "locationManager is null: " + e);
-                    // ACRA.getErrorReporter().handleException(e);
                 }
 
+                /* Open the file */
                 Log.d(LOG_TAG, "fileName = " + filename);
                 try
                 {
@@ -175,9 +171,11 @@ public class AudioRecordRunnable implements Runnable
                 {
                     Log.e(LOG_TAG, "File open exception: " + e);
                 }
+
                 fileOpened = true;
             }
 
+            /* Start saving audio to the file */
             if(isSaving &&
                     os != null &&
                     read != AudioRecord.ERROR_INVALID_OPERATION &&
@@ -192,6 +190,7 @@ public class AudioRecordRunnable implements Runnable
                     Log.e(LOG_TAG, "File write error: " + e);
                 }
             }
+            /* Stop saving after 1 minute */
             else if(System.currentTimeMillis() - time >= 60000 && os != null)
             {
                 isSaving = false;
@@ -219,13 +218,13 @@ public class AudioRecordRunnable implements Runnable
             });
         }
 
-        // Close recorder
+        /* Close and clean the recorder */
         recorder.stop();
         recorder.release();
 
         isSaving = false;
 
-        // Close audio writer
+        /* Close and clean the audio writer */
         if(os != null)
         {
             try
@@ -239,7 +238,8 @@ public class AudioRecordRunnable implements Runnable
         }
 
         Log.d(LOG_TAG, "Writing data to " + AUDIO_BASE_DIR + filename + ".raw");
-        // Convert RAW to .wav file
+
+        /* Convert RAW to .wav file */
         try
         {
             Log.d(LOG_TAG, filename);
@@ -280,7 +280,6 @@ public class AudioRecordRunnable implements Runnable
                 maxFFTSample = absSignal[i];
             }
         }
-        activityMain.getViewVisualiser().setPeak(maxFFTSample);
         return absSignal;
     }
 
