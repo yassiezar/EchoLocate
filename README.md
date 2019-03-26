@@ -1,0 +1,1 @@
+Android app that uses the microphone to analyse the sound waveform and trigger an alert if a specific frequency is deteced. This is used to place markers around an environment and alert a user when a beacon is reached.
